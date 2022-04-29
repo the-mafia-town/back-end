@@ -3,14 +3,14 @@ import { Action } from "./Types";
 import { Game } from "./Game";
 
 export class Player implements Action {
-  private socket: Socket;
+  private _socket: Socket;
   private readonly _username: string;
   private _isAlive: boolean;
   private _isMafia: boolean;
   private _role: string;
 
   constructor(socket, username) {
-    this.socket = socket;
+    this._socket = socket;
     this._username = username;
     this._isAlive = true;
     this._isMafia = false;
@@ -47,6 +47,10 @@ export class Player implements Action {
 
   set role(value: string) {
     this._role = value;
+  }
+
+  get socket(): Socket {
+    return this._socket;
   }
 
   doAction(game: Game, targetPlayer: Player) {

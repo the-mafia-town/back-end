@@ -4,7 +4,7 @@ import { MessageType, PhaseTimes } from "./Types";
 export class LoopManager {
   server: Server;
   votes = {};
-  actions = {};
+  actions: Record<string, string> = {};
   voteTimer: number;
   nightTimer: number;
 
@@ -53,6 +53,7 @@ export class LoopManager {
         this.voteTimer = time;
         if (time < 1) {
           resolve(this.votes);
+          this.votes = {};
         }
       });
     });
@@ -67,6 +68,7 @@ export class LoopManager {
         this.nightTimer = time;
         if (time < 1) {
           resolve(this.actions);
+          this.actions = {};
         }
       });
     });

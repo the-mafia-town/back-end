@@ -1,11 +1,30 @@
 import { Player } from "./Player";
 import { Game } from "./Game";
 
-export class Actions {
-  private readonly actions: Record<string, Action>;
+export class ActionManager {
+  private _actions: Record<string, Action> = {};
+  private readonly _game: Game;
 
-  constructor(actions: Record<string, Action>) {
-    this.actions = actions;
+  constructor(game: Game) {
+    this._game = game;
+  }
+
+  get game(): Game {
+    return this._game;
+  }
+
+  get actions(): Record<string, Action> {
+    return this._actions;
+  }
+
+  clearActions() {
+    this._actions = {};
+  }
+
+  setActions(actions) {
+    for (const actor in actions) {
+      this.actions[actor] = new Action(this.game.getPlayerFromUsername(actor), this.game.getPlayerFromUsername(actions[actor]), this.game.day);
+    }
   }
 
   isRoleBlocked(actorPlayer: Player) {
@@ -55,4 +74,5 @@ export class Action {
   get day(): number {
     return this._day;
   }
+
 }

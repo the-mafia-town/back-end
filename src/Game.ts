@@ -1,8 +1,15 @@
-import { mafiaRoles, MessageType, rolesPlayerNumberMapper } from "./types.js";
+import {
+  investigationResultsForInvestigator,
+  investigationResultsForSheriff,
+  mafiaRoles,
+  MessageType,
+  rolesPlayerNumberMapper
+} from "./types.js";
 import { LoopManager } from "./LoopManager";
 import { Player } from "./Player";
 import { Server } from "socket.io";
-import { Actions } from "./Actions.js";
+import { Action, ActionManager } from "./ActionManager.js";
+import { validateEach } from "@nestjs/common/utils/validate-each.util";
 
 export class Game {
   private readonly _server: Server;
@@ -11,7 +18,8 @@ export class Game {
   private readonly _numberOfPlayer: number;
   private readonly _matchedRoles: any[];
   private readonly _looper: LoopManager;
-  private day = 1;
+  private readonly _actionManager: ActionManager;
+  private _day = 1;
   private deadPlayers: {} = {};
 
   constructor(io, gameCreator, players) {
@@ -22,6 +30,7 @@ export class Game {
     this._numberOfPlayer = players.length;
     this._matchedRoles = this.matchRoles();
     this._looper = new LoopManager(io);
+    this._actionManager = new ActionManager(this);
   }
 
   getPlayersInfo() {
@@ -53,14 +62,22 @@ export class Game {
   }
 
   async loop() {
-    //while (!isGameEnd()) {
-    await this.looper.executeDiscussionPhase();
-    let votes = await this.looper.executeVotePhase();
-    this.executeVotes(votes);
-    let actions = await this.looper.executeNightPhase();
-    this.executeActions(actions);
-    this.day++;
-    //}
+    while (!this.isGameEnd()) {
+      await this.looper.executeDiscussionPhase();
+      let votes = await this.looper.executeVotePhase();
+      this.executeVotes(votes);
+      let actions = await this.looper.executeNightPhase();
+      this.actionManager.setActions(actions);
+      this.executeActions(this.actionManager.actions);
+      this.forwardDay();
+    }
+  }
+
+  forwardDay() {
+    console.log(`${this.day}. day is over. \n Death players: ${this.deadPlayers[this.day].map(player => player.username)}`);
+    this.server.emit(MessageType.GAME_INFO, this.getPlayersInfo());
+    this._day++;
+    this.actionManager.clearActions();
   }
 
   isGameEnd() {
@@ -76,16 +93,19 @@ export class Game {
   }
 
   addToDeathPlayers(player: Player) {
-    this.deadPlayers[this.day] = player;
+    if (this.deadPlayers[this.day] == undefined) {
+      this.deadPlayers[this.day] = [];
+    }
+    this.deadPlayers[this.day].push(player);
   }
 
-  executeActions(actions: Actions) {
+  executeActions(actions: Record<string, Action>) {
     let deathPlayers = [];
     let doneActions = [];
     for (const actorUsername in actions) {
-      let targetUsername = actions[actorUsername];
-      let actorPlayer = this.getPlayerFromUsername(actorUsername);
-      let targetPlayer = this.getPlayerFromUsername(targetUsername);
+      let action = actions[actorUsername];
+      let actorPlayer = action.actorPlayer;
+      let targetPlayer = action.targetPlayer;
       if (actorPlayer.role == "Godfather") {
         if (this.isTargetProtected(targetPlayer, actions)) {
           console.log("Target is protected this night.");
@@ -94,24 +114,43 @@ export class Game {
         }
         doneActions.push(actorPlayer.username);
       } else if (actorPlayer.role == "Mafioso") {
-        if (this.isGodfatherAlive() && this.isGodfatherDidAction(actions)) {
-
+        if (!this.isGodfatherAlive() && !this.isGodfatherDidAction(actions)) {
+          deathPlayers.push(targetPlayer);
+          doneActions.push(actorPlayer.username);
         }
-      } else if (actorPlayer.role == "Framer") {
+      } else if (actorPlayer.role == "Consigliere") {
 
       } else if (actorPlayer.role == "Jailor") {
 
       } else if (actorPlayer.role == "Doctor") {
 
       } else if (actorPlayer.role == "Investigator") {
-
+        let targetInfo = investigationResultsForInvestigator[targetPlayer.role];
+        this.server.to(actorPlayer.socket.id).emit(MessageType.ACTION_RESULT_TAKEN, targetInfo);
       } else if (actorPlayer.role == "Sheriff") {
-
+        let targetInfo = investigationResultsForSheriff[targetPlayer.role];
+        this.server.to(actorPlayer.socket.id).emit(MessageType.ACTION_RESULT_TAKEN, targetInfo);
       }
+    }
+    this.killPlayers(deathPlayers);
+  }
+
+  killPlayers(deathPlayers: Player[]) {
+    for (const deadPlayer of deathPlayers) {
+      this.killPlayer(deadPlayer.username);
     }
   }
 
-  isRoleBlocked(actorPlayer: Player, actions){
+  killPlayer(username: string) {
+    this.players.forEach((value, index) => {
+      if (value.username == username) {
+        this.players[index].isAlive = false;
+        this.addToDeathPlayers(value);
+      }
+    });
+  }
+
+  isRoleBlocked(actorPlayer: Player, actions) {
 
   }
 
@@ -237,10 +276,13 @@ export class Game {
   get looper(): LoopManager {
     return this._looper;
   }
+
+  get actionManager(): ActionManager {
+    return this._actionManager;
+  }
+
+  get day(): number {
+    return this._day;
+  }
 }
 
-interface Action {
-  actorPlayer: Player,
-  targetPlayer: Player,
-
-}
