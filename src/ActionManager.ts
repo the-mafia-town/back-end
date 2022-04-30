@@ -62,7 +62,6 @@ export class Action {
     this._day = day;
   }
 
-
   get actorPlayer(): Player {
     return this._actorPlayer;
   }

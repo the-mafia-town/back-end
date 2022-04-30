@@ -9,14 +9,14 @@ import { LoopManager } from "./LoopManager";
 import { Player } from "./Player";
 import { Server } from "socket.io";
 import { Action, ActionManager } from "./ActionManager.js";
-import { validateEach } from "@nestjs/common/utils/validate-each.util";
 
 export class Game {
   private readonly _server: Server;
   private readonly _gameCreator: string;
   private readonly _players: Player[];
+  private _roleIndexPlayersMap = {};
+  private _usernameIndexPlayersMap = {};
   private readonly _numberOfPlayer: number;
-  private readonly _matchedRoles: any[];
   private readonly _looper: LoopManager;
   private readonly _actionManager: ActionManager;
   private _day = 1;
@@ -28,9 +28,26 @@ export class Game {
     this._gameCreator = gameCreator;
     this._players = players;
     this._numberOfPlayer = players.length;
-    this._matchedRoles = this.matchRoles();
     this._looper = new LoopManager(io);
     this._actionManager = new ActionManager(this);
+    this.deadPlayers[this.day] = [];
+    this.matchRoles();
+    this.indexPlayers();
+  }
+
+  get roleIndexPlayersMap(): {} {
+    return this._roleIndexPlayersMap;
+  }
+
+  get usernameIndexPlayersMap(): {} {
+    return this._usernameIndexPlayersMap;
+  }
+
+  indexPlayers() {
+    this.players.forEach((value, index) => {
+      this.roleIndexPlayersMap[value.role] = index;
+      this.usernameIndexPlayersMap[value.username] = index;
+    });
   }
 
   getPlayersInfo() {
@@ -74,9 +91,10 @@ export class Game {
   }
 
   forwardDay() {
-    console.log(`${this.day}. day is over. \n Death players: ${this.deadPlayers[this.day].map(player => player.username)}`);
+    console.log(`${this.day}.day is over. \nDeath players: ${this.deadPlayers[this.day].map(player => player.username)}`);
     this.server.emit(MessageType.GAME_INFO, this.getPlayersInfo());
     this._day++;
+    this.deadPlayers[this.day] = [];
     this.actionManager.clearActions();
   }
 
@@ -142,12 +160,9 @@ export class Game {
   }
 
   killPlayer(username: string) {
-    this.players.forEach((value, index) => {
-      if (value.username == username) {
-        this.players[index].isAlive = false;
-        this.addToDeathPlayers(value);
-      }
-    });
+    let idxOfPlayer = this.usernameIndexPlayersMap[username];
+    this.players[idxOfPlayer].isAlive = false;
+    this.addToDeathPlayers(this.players[idxOfPlayer]);
   }
 
   isRoleBlocked(actorPlayer: Player, actions) {
@@ -164,11 +179,7 @@ export class Game {
   }
 
   isGodfatherAlive(): boolean {
-    for (const player of this.players) {
-      if (player.role == "Godfather" && player.isAlive)
-        return true;
-    }
-    return false;
+    return this.roleIndexPlayersMap["Godfather"].isAlive;
   }
 
   isTargetProtected(targetPlayer: Player, actions): boolean {
@@ -182,10 +193,10 @@ export class Game {
   }
 
   getPlayerFromUsername(searchingUsername): Player {
-    for (const player of this.players) {
-      if (player.username == searchingUsername && player.isAlive)
-        return player;
-    }
+    let playerIdx = this.usernameIndexPlayersMap[searchingUsername];
+    let player = this.players[playerIdx];
+    if (player.isAlive)
+      return player;
     return null;
   }
 
@@ -195,6 +206,8 @@ export class Game {
       for (const idx in this.players) {
         if (this.players[idx].username == chosenPlayer.username) {
           this.players[idx].isAlive = false;
+          this.changeRoleOfMafiosoIfGFDied();
+          this.changeRoleOfConsigliereIfGFAndMFDied();
           chosenPlayer.role = this.players[idx].role;
           this.server.emit(MessageType.VOTE_INFO, chosenPlayer);
           this.server.emit(MessageType.GAME_INFO, this.getPlayersInfo());
@@ -202,6 +215,23 @@ export class Game {
           break;
         }
       }
+    }
+  }
+
+  changeRoleOfConsigliereIfGFAndMFDied() {
+    let idxOfGF = this.roleIndexPlayersMap["Godfather"];
+    let idxOfMF = this.roleIndexPlayersMap["Mafioso"];
+    let idxOfCons = this.roleIndexPlayersMap["Consigliere"];
+    if (this.players[idxOfGF].isAlive == false && this.players[idxOfMF].isAlive == false) {
+      this.players[idxOfCons].role = "Mafioso";
+    }
+  }
+
+  changeRoleOfMafiosoIfGFDied() {
+    let idxOfGF = this.roleIndexPlayersMap["Godfather"];
+    let idxOfMF = this.roleIndexPlayersMap["Mafioso"];
+    if (this.players[idxOfGF].isAlive == false) {
+      this.players[idxOfMF].role = "Godfather";
     }
   }
 
@@ -216,30 +246,27 @@ export class Game {
         playerVotes[target] = 1;
       }
     }
+    let entries = Object.entries(playerVotes);
+    let sorted = entries.sort((a: [string, number], b: [string, number]) => b[1] - a[1]);
     let chosenPlayer = { username: "none", role: "", vote: 0 };
-    for (const player in playerVotes) {
-      if (playerVotes[player] > chosenPlayer.vote) {
-        chosenPlayer = { username: player, role: "", vote: playerVotes[player] };
-      }
+    if (sorted[0] !== sorted[1]) {
+      chosenPlayer.username = sorted[0][0];
+      // @ts-ignore
+      chosenPlayer.vote = sorted[0][1];
     }
     return chosenPlayer;
   }
 
   matchRoles() {
-    console.log("Num of players:", this._numberOfPlayer);
-    let roles = rolesPlayerNumberMapper[this._numberOfPlayer];
-    console.log("Roles:", roles);
+    let roles = rolesPlayerNumberMapper[this.numberOfPlayer];
     let shuffledRoles = this.shuffleArray(roles);
-    let matchedRoles = [];
-    for (let i = 0; i < this._players.length; i++) {
+    for (let i = 0; i < this.players.length; i++) {
       let matchedRole = shuffledRoles[i];
-      this._players[i].role = matchedRole;
+      this.players[i].role = matchedRole;
       if (mafiaRoles.includes(matchedRole)) {
-        this._players[i].isMafia = true;
+        this.players[i].isMafia = true;
       }
-      matchedRoles.push({ "username": this._players[i].username, "role": shuffledRoles[i] });
     }
-    return matchedRoles;
   }
 
   shuffleArray(array) {
@@ -267,10 +294,6 @@ export class Game {
 
   get numberOfPlayer(): any {
     return this._numberOfPlayer;
-  }
-
-  get matchedRoles(): any[] {
-    return this._matchedRoles;
   }
 
   get looper(): LoopManager {

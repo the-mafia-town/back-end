@@ -33,7 +33,11 @@ export class LoopManager {
   onUserVoted(payload) {
     if (this.voteTimer > 0) {
       console.log(`User voted action captured. Username:${payload.username}, Target user: ${payload.targetUsername}`);
-      this.votes[payload.username] = payload.targetUsername;
+      if (this.votes[payload.username] && this.votes[payload.username] == payload.targetUsername) {
+        delete this.votes[payload.username];
+      } else {
+        this.votes[payload.username] = payload.targetUsername;
+      }
     }
   }
 
