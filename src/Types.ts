@@ -31,6 +31,7 @@ export let MessageType = {
   VOTE_INFO: "16",
   USER_VOTED: "17",
   ACTION_RESULT_TAKEN: "18",
+  GAME_STARTED: "19",
 
   // Errors... shit happens
   ERROR_ROOM_IS_FULL: "998",
@@ -105,3 +106,7 @@ export let mafiaRoles = ["Godfather", "Mafioso", "Framer"];
 export interface Action {
   doAction(game: Game, targetPlayer: Player);
 }
+
+export let defenseToStrongMessageForAttacker = "Your target's defense was too strong to kill.";
+export let defenseToStrongMessageForDefender = "Someone attacked you but your Defense was too strong!";
+

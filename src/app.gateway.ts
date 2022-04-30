@@ -30,6 +30,17 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
 
   @SubscribeMessage(MessageType.START_GAME)
   onStartGame(client: Socket, payload: any): void {
+    this.game = createGame(this.server, this.gameCreator, this.connectedPlayers);
+    this.game.loop();
+    let info = this.game.getPlayersInfo();
+    this.server.emit(MessageType.GAME_STARTED, info);
+    this.server.emit(MessageType.GAME_INFO, info);
+  }
+
+  @SubscribeMessage(MessageType.CREATE_GAME)
+  onCreateGame(client: Socket, payload: any): void {
+    this.logger.log(`Create game event taken. Creator is ${payload.username}`);
+    this.connectedPlayers = [];
     this.connectedPlayers = [
       {
         socket: client,
@@ -52,23 +63,13 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
         username: "Player5"
       }
     ];
-    this.game = createGame(this.server, this.gameCreator, this.connectedPlayers);
-    this.game.loop();
-    let info = this.game.getPlayersInfo();
-    this.server.emit(MessageType.GAME_INFO, info);
-  }
-
-  @SubscribeMessage(MessageType.CREATE_GAME)
-  onCreateGame(client: Socket, payload: any): void {
-    this.logger.log(`Create game event taken. Creator is ${payload.username}`);
-    this.connectedPlayers = [];
     this.gameCreator = payload.username;
     this.connectedPlayers.push({ "socket": client, "username": payload.username });
   }
 
   @SubscribeMessage(MessageType.JOIN)
   onUserJoin(client: Socket, payload: any): void {
-    this.logger.log(`${MessageType.JOIN} event taken. User wanted to join is ${payload.username}`);
+    this.logger.log(`JOIN event taken. ${payload.username} wants to join.`);
     if (this.connectedPlayers.length > 14) {
       let message = "Maximum number of player is reached.";
       this.logger.log(message);
@@ -76,9 +77,10 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
       return;
     }
     this.connectedPlayers.push({ "socket": client, "username": payload.username });
-
-    const newPlayerJoinMessage = `${payload.username} is joined to the room.`;
-    this.server.emit(MessageType.USER_JOINED, newPlayerJoinMessage);
+    this.server.emit(MessageType.USER_JOINED, {
+      lastJoinedUser: payload.username,
+      users: this.connectedPlayers.map(player => player.username)
+    });
   }
 
   @SubscribeMessage(MessageType.USER_SENT_MESSAGE)

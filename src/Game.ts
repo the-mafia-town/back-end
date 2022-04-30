@@ -47,6 +47,7 @@ export class Game {
   // In this way, when we want to access a player, first we get the index of this player from this maps.
   // After that we can get player data from players array with O(1) time complexity.
   // If we access player with classic method searching on players array, time complexity would be O(n) at worst case.
+  // This approach is working because we never change order of players in 'players' instance.
   indexPlayers() {
     this.players.forEach((value, index) => {
       this.roleIndexPlayersMap[value.role] = index;
@@ -207,18 +208,14 @@ export class Game {
   executeVotes(votes) {
     let chosenPlayer = this.calculateVotes(votes);
     if (chosenPlayer.username != "none") {
-      for (const idx in this.players) {
-        if (this.players[idx].username == chosenPlayer.username) {
-          this.players[idx].isAlive = false;
-          this.changeRoleOfMafiosoIfGFDied();
-          this.changeRoleOfConsigliereIfGFAndMFDied();
-          chosenPlayer.role = this.players[idx].role;
-          this.server.emit(MessageType.VOTE_INFO, chosenPlayer);
-          this.server.emit(MessageType.GAME_INFO, this.getPlayersInfo());
-          this.addToDeathPlayers(this.players[idx]);
-          break;
-        }
-      }
+      let idxOfPlayer = this.usernameIndexPlayersMap[chosenPlayer.username];
+      this.players[idxOfPlayer].isAlive = false;
+      this.changeRoleOfMafiosoIfGFDied();
+      this.changeRoleOfConsigliereIfGFAndMFDied();
+      chosenPlayer.role = this.players[idxOfPlayer].role;
+      this.server.emit(MessageType.VOTE_INFO, chosenPlayer);
+      this.server.emit(MessageType.GAME_INFO, this.getPlayersInfo());
+      this.addToDeathPlayers(this.players[idxOfPlayer]);
     }
   }
 
@@ -253,11 +250,13 @@ export class Game {
     let entries = Object.entries(playerVotes);
     let sorted = entries.sort((a: [string, number], b: [string, number]) => b[1] - a[1]);
     let chosenPlayer = { username: "none", role: "", vote: 0 };
-    if (sorted[0] !== sorted[1]) {
+    console.log("Votes sorted", sorted);
+    if (sorted.length == 1 || (sorted.length > 1 && sorted[0][1] !== sorted[1][1])) {
       chosenPlayer.username = sorted[0][0];
       // @ts-ignore
       chosenPlayer.vote = sorted[0][1];
     }
+    console.log("Chosen player:", chosenPlayer);
     return chosenPlayer;
   }
 

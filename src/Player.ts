@@ -3,7 +3,7 @@ import { Action } from "./Types";
 import { Game } from "./Game";
 
 export class Player implements Action {
-  private _socket: Socket;
+  private readonly _socket: Socket;
   private readonly _username: string;
   private _isAlive: boolean;
   private _isMafia: boolean;
