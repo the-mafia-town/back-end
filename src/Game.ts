@@ -43,6 +43,10 @@ export class Game {
     return this._usernameIndexPlayersMap;
   }
 
+  // I prefer to create these maps because we have to access specific player lots of time.
+  // In this way, when we want to access a player, first we get the index of this player from this maps.
+  // After that we can get player data from players array with O(1) time complexity.
+  // If we access player with classic method searching on players array, time complexity would be O(n) at worst case.
   indexPlayers() {
     this.players.forEach((value, index) => {
       this.roleIndexPlayersMap[value.role] = index;
