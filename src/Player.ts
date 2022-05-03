@@ -1,6 +1,7 @@
 import { Socket } from "socket.io";
 import { Action } from "./Types";
 import { Game } from "./Game";
+import { Role } from "./Role";
 
 export class Player implements Action {
   private readonly _socket: Socket;
@@ -8,6 +9,7 @@ export class Player implements Action {
   private _isAlive: boolean;
   private _isMafia: boolean;
   private _role: string;
+  private _remainingAbilityCounter = 3;
 
   constructor(socket, username) {
     this._socket = socket;
@@ -18,7 +20,13 @@ export class Player implements Action {
   }
 
   getPlayerInfo() {
-    return { username: this.username, isAlive: this.isAlive, isMafia: this.isMafia, role: this.role };
+    return {
+      username: this.username,
+      isAlive: this.isAlive,
+      isMafia: this.isMafia,
+      role: this.role,
+      remainingAbilityCounter: this.remainingAbilityCounter
+    };
   }
 
   get username(): string {
@@ -51,6 +59,14 @@ export class Player implements Action {
 
   get socket(): Socket {
     return this._socket;
+  }
+
+  get remainingAbilityCounter(): number {
+    return this._remainingAbilityCounter;
+  }
+
+  set remainingAbilityCounter(value: number) {
+    this._remainingAbilityCounter = value;
   }
 
   doAction(game: Game, targetPlayer: Player) {

@@ -83,8 +83,21 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
     });
   }
 
+  @SubscribeMessage(MessageType.JAILOR_SENT_MESSAGE)
+  onJailorSentMessage(client: Socket, payload: any): void {
+    let senderUsername = payload.sender;
+    let targetUsername = payload.targetUsername;
+    let targetIdx = this.game.usernameIndexPlayersMap[targetUsername];
+    let targetPlayer = this.game.players[targetIdx];
+    this.server.to(targetPlayer.socket.id).emit(MessageType.JAILOR_SENT_MESSAGE, {
+      jailorUsername: senderUsername,
+      message: payload.message
+    });
+  }
+
   @SubscribeMessage(MessageType.USER_SENT_MESSAGE)
   onUserSentMessage(client: Socket, payload: any): void {
+    console.log("Client id:", client.id);
     console.log(`Message '${payload["message"]}' is sent by ${payload["sender"]}`);
     this.server.emit(MessageType.USER_MESSAGE_RECEIVED + "", payload);
   }

@@ -3,6 +3,8 @@ import {
   investigationResultsForSheriff,
   mafiaRoles,
   MessageType,
+  numOfVotesRequiredForTrial,
+  Phases,
   rolesPlayerNumberMapper
 } from "./types.js";
 import { LoopManager } from "./LoopManager";
@@ -16,11 +18,13 @@ export class Game {
   private readonly _players: Player[];
   private _roleIndexPlayersMap = {};
   private _usernameIndexPlayersMap = {};
+  private _socketIdIndexPlayersMap = {};
   private readonly _numberOfPlayer: number;
   private readonly _looper: LoopManager;
   private readonly _actionManager: ActionManager;
   private _day = 1;
   private deadPlayers: {} = {};
+  private currentPhase: number;
 
   constructor(io, gameCreator, players) {
     console.log("Game constructor is called");
@@ -43,7 +47,11 @@ export class Game {
     return this._usernameIndexPlayersMap;
   }
 
-  // I prefer to create these maps because we have to access specific player lots of time.
+  get socketIdIndexPlayersMap(): {} {
+    return this._socketIdIndexPlayersMap;
+  }
+
+// I prefer to create these maps because we have to access specific player lots of time.
   // In this way, when we want to access a player, first we get the index of this player from this maps.
   // After that we can get player data from players array with O(1) time complexity.
   // If we access player with classic method searching on players array, time complexity would be O(n) at worst case.
@@ -52,6 +60,7 @@ export class Game {
     this.players.forEach((value, index) => {
       this.roleIndexPlayersMap[value.role] = index;
       this.usernameIndexPlayersMap[value.username] = index;
+      this.socketIdIndexPlayersMap[value.socket.id] = index;
     });
   }
 
@@ -61,6 +70,10 @@ export class Game {
       playerInfos.push(player.getPlayerInfo());
     }
     return playerInfos;
+  }
+
+  getNumOfAlivePlayers() {
+    return this.getNumOfAliveTownie() + this.getNumOfAliveMafia();
   }
 
   getNumOfAliveTownie() {
@@ -75,7 +88,7 @@ export class Game {
 
   getNumOfAliveMafia() {
     let numOfAliveMafia = 0;
-    for (const player of this._players) {
+    for (const player of this.players) {
       if (player.isMafia && player.isAlive) {
         numOfAliveMafia++;
       }
@@ -85,9 +98,21 @@ export class Game {
 
   async loop() {
     while (!this.isGameEnd()) {
+      this.currentPhase = Phases.DISCUSSION_PHASE;
       await this.looper.executeDiscussionPhase();
-      let votes = await this.looper.executeVotePhase();
-      this.executeVotes(votes);
+      this.currentPhase = Phases.VOTING_PHASE;
+      let votes = await this.looper.executeVotingPhase();
+      let chosenPlayer = this.calculateVotes(votes);
+      if (chosenPlayer.username != "none") {
+        this.currentPhase = Phases.DEFENSE_PHASE;
+        await this.looper.executeDefensePhase();
+        this.currentPhase = Phases.JUDGEMENT_PHASE;
+        votes = await this.looper.executeJudgementPhase();
+        this.executeVotes(votes);
+        this.currentPhase = Phases.LAST_WORDS_PHASE;
+        await this.looper.executeLastWordsPhase();
+      }
+      this.currentPhase = Phases.NIGHT_PHASE;
       let actions = await this.looper.executeNightPhase();
       this.actionManager.setActions(actions);
       this.executeActions(this.actionManager.actions);
@@ -122,6 +147,15 @@ export class Game {
     this.deadPlayers[this.day].push(player);
   }
 
+
+  /*
+    {
+      "Safa":"Fatih",
+      "Player3":"Player4",
+      "Player5":"Fatih",
+      "Player2":"Player5",
+    }
+   */
   executeActions(actions: Record<string, Action>) {
     let deathPlayers = [];
     let doneActions = [];
@@ -153,6 +187,8 @@ export class Game {
       } else if (actorPlayer.role == "Sheriff") {
         let targetInfo = investigationResultsForSheriff[targetPlayer.role];
         this.server.to(actorPlayer.socket.id).emit(MessageType.ACTION_RESULT_TAKEN, targetInfo);
+      } else if (actorPlayer.role == "Veteran") {
+
       }
     }
     this.killPlayers(deathPlayers);
@@ -171,7 +207,16 @@ export class Game {
   }
 
   isRoleBlocked(actorPlayer: Player, actions) {
-
+    for (const actor in actions) {
+      let action = actions[actor];
+      if (action.targetPlayer.username == actorPlayer.username) {
+        let player = this.usernameIndexPlayersMap[action.actorPlayer.username];
+        if (player.role === "Doctor" || player.role === "Jailor") {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   isGodfatherDidAction(actions): Player {
@@ -237,7 +282,7 @@ export class Game {
   }
 
   calculateVotes(votes) {
-    console.log(votes);
+    console.log("Votes: ", votes);
     let playerVotes = {};
     for (const voter in votes) {
       let target = votes[voter];
@@ -251,10 +296,20 @@ export class Game {
     let sorted = entries.sort((a: [string, number], b: [string, number]) => b[1] - a[1]);
     let chosenPlayer = { username: "none", role: "", vote: 0 };
     console.log("Votes sorted", sorted);
-    if (sorted.length == 1 || (sorted.length > 1 && sorted[0][1] !== sorted[1][1])) {
-      chosenPlayer.username = sorted[0][0];
-      // @ts-ignore
-      chosenPlayer.vote = sorted[0][1];
+    console.log("Current phase: ", this.currentPhase);
+    if (this.currentPhase == Phases.VOTING_PHASE) {
+      if (sorted.length == 1 || (sorted.length > 1 && sorted[0][1] !== sorted[1][1])) {
+        chosenPlayer.username = sorted[0][0];
+        // @ts-ignore
+        chosenPlayer.vote = sorted[0][1];
+      }
+    } else if (this.currentPhase == Phases.JUDGEMENT_PHASE) {
+      let requiredVotes = numOfVotesRequiredForTrial[this.getNumOfAlivePlayers()];
+      if (sorted.length > 0 && sorted[0][1] >= requiredVotes) {
+        chosenPlayer.username = sorted[0][0];
+        // @ts-ignore
+        chosenPlayer.vote = sorted[0][1];
+      }
     }
     console.log("Chosen player:", chosenPlayer);
     return chosenPlayer;

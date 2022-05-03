@@ -25,13 +25,17 @@ export let MessageType = {
   USER_SENT_MESSAGE: "10",
   USER_MESSAGE_RECEIVED: "11",
   DISCUSSION_TIME_INFO: "12",
-  VOTE_TIME_INFO: "13",
-  NIGHT_TIME_INFO: "14",
-  USER_ACTION_TAKEN: "15",
-  VOTE_INFO: "16",
-  USER_VOTED: "17",
-  ACTION_RESULT_TAKEN: "18",
-  GAME_STARTED: "19",
+  VOTING_TIME_INFO: "13",
+  DEFENSE_TIME_INFO: "14",
+  JUDGEMENT_TIME_INFO: "15",
+  LAST_WORDS_TIME_INFO: "16",
+  NIGHT_TIME_INFO: "17",
+  USER_ACTION_TAKEN: "18",
+  VOTE_INFO: "19",
+  USER_VOTED: "20",
+  ACTION_RESULT_TAKEN: "21",
+  GAME_STARTED: "22",
+  JAILOR_SENT_MESSAGE: "22",
 
   // Errors... shit happens
   ERROR_ROOM_IS_FULL: "998",
@@ -41,14 +45,37 @@ export let MessageType = {
 
 export let Phases = {
   DISCUSSION_PHASE: 1,
-  VOTE_PHASE: 2,
-  NIGHT_PHASE: 3
+  VOTING_PHASE: 2,
+  DEFENSE_PHASE: 3,
+  JUDGEMENT_PHASE: 4,
+  LAST_WORDS_PHASE: 5,
+  NIGHT_PHASE: 6
 };
 
 export let PhaseTimes = {
   DISCUSSION_TIME: 6,
-  VOTE_TIME: 6,
+  VOTING_TIME: 6,
+  DEFENSE_TIME: 6,
+  JUDGEMENT_TIME: 6,
+  LAST_WORDS_TIME: 6,
   NIGHT_TIME: 6
+};
+
+export let numOfVotesRequiredForTrial = {
+  15: 8,
+  14: 8,
+  13: 7,
+  12: 7,
+  11: 6,
+  10: 6,
+  9: 5,
+  8: 5,
+  7: 4,
+  6: 4,
+  5: 3,
+  4: 3,
+  3: 2,
+  2: 2
 };
 
 export let rolesPlayerNumberMapper = {
@@ -110,3 +137,31 @@ export interface Action {
 export let defenseToStrongMessageForAttacker = "Your target's defense was too strong to kill.";
 export let defenseToStrongMessageForDefender = "Someone attacked you but your Defense was too strong!";
 
+export let Immunity = {
+  NONE_ATTACK: 1,
+  BASIC_ATTACK: 2,
+  POWERFUL_ATTACK: 3,
+  UNSTOPPABLE_ATTACK: 4,
+  NONE_DEFENSE: 5,
+  BASIC_DEFENSE: 6,
+  POWERFUL_DEFENSE: 7,
+  INVINCIBLE_DEFENSE: 8
+};
+
+export let ImmunityRoleMap = {
+  "Godfather": [Immunity.NONE_ATTACK, Immunity.BASIC_DEFENSE],
+  "Veteran": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Bodyguard": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Doctor": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Mafioso": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Jailor": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Investigator": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Mayor": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Lookout": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Spy": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Transporter": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Escort": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Consigliere": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Vigilante": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
+  "Sheriff": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE]
+};

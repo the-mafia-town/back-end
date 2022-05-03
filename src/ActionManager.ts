@@ -42,7 +42,7 @@ export class ActionManager {
   isTargetProtected(targetPlayer: Player, game: Game): boolean {
     for (const actorUsername in this.actions) {
       let actorPlayer = game.getPlayerFromUsername(actorUsername);
-      if (actorPlayer.role == "Doctor" && this.actions[actorUsername].targetPlayer.username == targetPlayer.username) {
+      if (actorPlayer.role  == "Doctor" && this.actions[actorUsername].targetPlayer.username == targetPlayer.username) {
         return true;
       }
     }
