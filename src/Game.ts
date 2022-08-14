@@ -1,4 +1,5 @@
 import {
+  AttackDefenseType,
   investigationResultsForInvestigator,
   investigationResultsForSheriff,
   mafiaRoles,
@@ -11,6 +12,7 @@ import { LoopManager } from "./LoopManager";
 import { Player } from "./Player";
 import { Server } from "socket.io";
 import { Action, ActionManager } from "./ActionManager.js";
+import { Role } from "./Role";
 
 export class Game {
   private readonly _server: Server;
@@ -58,7 +60,7 @@ export class Game {
   // This approach is working because we never change order of players in 'players' instance.
   indexPlayers() {
     this.players.forEach((value, index) => {
-      this.roleIndexPlayersMap[value.role] = index;
+      this.roleIndexPlayersMap[value.role.name] = index;
       this.usernameIndexPlayersMap[value.username] = index;
       this.socketIdIndexPlayersMap[value.socket.id] = index;
     });
@@ -163,32 +165,38 @@ export class Game {
       let action = actions[actorUsername];
       let actorPlayer = action.actorPlayer;
       let targetPlayer = action.targetPlayer;
-      if (actorPlayer.role == "Godfather") {
+      if (actorPlayer.role.name == "Godfather") {
         if (this.isTargetProtected(targetPlayer, actions)) {
           console.log("Target is protected this night.");
         } else {
           deathPlayers.push(targetPlayer);
         }
         doneActions.push(actorPlayer.username);
-      } else if (actorPlayer.role == "Mafioso") {
+      } else if (actorPlayer.role.name == "Mafioso") {
         if (!this.isGodfatherAlive() && !this.isGodfatherDidAction(actions)) {
           deathPlayers.push(targetPlayer);
           doneActions.push(actorPlayer.username);
         }
-      } else if (actorPlayer.role == "Consigliere") {
+      } else if (actorPlayer.role.name == "Consigliere") {
 
-      } else if (actorPlayer.role == "Jailor") {
-
-      } else if (actorPlayer.role == "Doctor") {
-
-      } else if (actorPlayer.role == "Investigator") {
-        let targetInfo = investigationResultsForInvestigator[targetPlayer.role];
+      } else if (actorPlayer.role.name == "Jailor") {
+        let idxOfActor = this.usernameIndexPlayersMap[actorPlayer.username];
+        let idxOfTarget = this.usernameIndexPlayersMap[targetPlayer.username];
+        this.players[idxOfActor].role.attack = AttackDefenseType.UNSTOPPABLE_ATTACK;
+        this.players[idxOfTarget].role.defense = AttackDefenseType.POWERFUL_DEFENSE;
+      } else if (actorPlayer.role.name == "Doctor") {
+        let idxOfTarget = this.usernameIndexPlayersMap[targetPlayer.username];
+        this.players[idxOfTarget].role.defense = AttackDefenseType.POWERFUL_DEFENSE;
+      } else if (actorPlayer.role.name == "Investigator") {
+        let targetInfo = investigationResultsForInvestigator[targetPlayer.role.name];
         this.server.to(actorPlayer.socket.id).emit(MessageType.ACTION_RESULT_TAKEN, targetInfo);
-      } else if (actorPlayer.role == "Sheriff") {
-        let targetInfo = investigationResultsForSheriff[targetPlayer.role];
+      } else if (actorPlayer.role.name == "Sheriff") {
+        let targetInfo = investigationResultsForSheriff[targetPlayer.role.name];
         this.server.to(actorPlayer.socket.id).emit(MessageType.ACTION_RESULT_TAKEN, targetInfo);
-      } else if (actorPlayer.role == "Veteran") {
-
+      } else if (actorPlayer.role.name == "Veteran") {
+        let idxOfTarget = this.usernameIndexPlayersMap[actorPlayer.username];
+        this.players[idxOfTarget].role.defense = AttackDefenseType.BASIC_DEFENSE;
+        this.players[idxOfTarget].role.attack = AttackDefenseType.POWERFUL_ATTACK;
       }
     }
     this.killPlayers(deathPlayers);
@@ -222,7 +230,7 @@ export class Game {
   isGodfatherDidAction(actions): Player {
     for (const actorUsername in actions) {
       let player = this.getPlayerFromUsername(actorUsername);
-      if (player.role == "Godfather")
+      if (player.role.name == "Godfather")
         return player;
     }
     return null;
@@ -235,7 +243,7 @@ export class Game {
   isTargetProtected(targetPlayer: Player, actions): boolean {
     for (const actorUsername in actions) {
       let actorPlayer = this.getPlayerFromUsername(actorUsername);
-      if (actorPlayer.role == "Doctor" && actions[actorUsername] == targetPlayer.username) {
+      if (actorPlayer.role.name == "Doctor" && actions[actorUsername] == targetPlayer.username) {
         return true;
       }
     }
@@ -257,7 +265,7 @@ export class Game {
       this.players[idxOfPlayer].isAlive = false;
       this.changeRoleOfMafiosoIfGFDied();
       this.changeRoleOfConsigliereIfGFAndMFDied();
-      chosenPlayer.role = this.players[idxOfPlayer].role;
+      chosenPlayer.role = this.players[idxOfPlayer].role.name;
       this.server.emit(MessageType.VOTE_INFO, chosenPlayer);
       this.server.emit(MessageType.GAME_INFO, this.getPlayersInfo());
       this.addToDeathPlayers(this.players[idxOfPlayer]);
@@ -269,7 +277,7 @@ export class Game {
     let idxOfMF = this.roleIndexPlayersMap["Mafioso"];
     let idxOfCons = this.roleIndexPlayersMap["Consigliere"];
     if (this.players[idxOfGF].isAlive == false && this.players[idxOfMF].isAlive == false) {
-      this.players[idxOfCons].role = "Mafioso";
+      this.players[idxOfCons].role = new Role("Mafioso");
     }
   }
 
@@ -277,7 +285,7 @@ export class Game {
     let idxOfGF = this.roleIndexPlayersMap["Godfather"];
     let idxOfMF = this.roleIndexPlayersMap["Mafioso"];
     if (this.players[idxOfGF].isAlive == false) {
-      this.players[idxOfMF].role = "Godfather";
+      this.players[idxOfMF].role = new Role("Godfather");
     }
   }
 
@@ -335,6 +343,14 @@ export class Game {
       array[j] = temp;
     }
     return array;
+  }
+
+  static createGame(io, gameCreator, connectedPlayers) {
+    let players = [];
+    connectedPlayers.map(player => {
+      players.push(new Player(player.socket, player.username));
+    });
+    return new Game(io, gameCreator, players);
   }
 
 

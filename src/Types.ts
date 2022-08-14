@@ -137,7 +137,7 @@ export interface Action {
 export let defenseToStrongMessageForAttacker = "Your target's defense was too strong to kill.";
 export let defenseToStrongMessageForDefender = "Someone attacked you but your Defense was too strong!";
 
-export let Immunity = {
+export let AttackDefenseType = {
   NONE_ATTACK: 1,
   BASIC_ATTACK: 2,
   POWERFUL_ATTACK: 3,
@@ -149,19 +149,31 @@ export let Immunity = {
 };
 
 export let ImmunityRoleMap = {
-  "Godfather": [Immunity.NONE_ATTACK, Immunity.BASIC_DEFENSE],
-  "Veteran": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Bodyguard": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Doctor": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Mafioso": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Jailor": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Investigator": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Mayor": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Lookout": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Spy": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Transporter": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Escort": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Consigliere": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Vigilante": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE],
-  "Sheriff": [Immunity.NONE_ATTACK, Immunity.NONE_DEFENSE]
+  "Godfather": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.BASIC_DEFENSE],
+  "Veteran": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Bodyguard": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Doctor": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Mafioso": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Jailor": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Investigator": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Mayor": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Lookout": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Spy": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Transporter": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Escort": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Consigliere": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Vigilante": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE],
+  "Sheriff": [AttackDefenseType.NONE_ATTACK, AttackDefenseType.NONE_DEFENSE]
+};
+
+export let Immunity = {
+  ROLE_BLOCKED: 1,
+  CONTROL: 2,
+  DETECTION: 3,
+  NIGHT: 4
+};
+
+export let roleImmunities = {
+  "Veteran": [Immunity.ROLE_BLOCKED, Immunity.CONTROL, Immunity.NIGHT],
+  "Godfather": [Immunity.DETECTION, Immunity.NIGHT]
 };

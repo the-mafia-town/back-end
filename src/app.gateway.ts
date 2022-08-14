@@ -10,7 +10,6 @@ import { Server, Socket } from "socket.io";
 import { Logger } from "@nestjs/common";
 import { MessageType } from "./Types";
 import { Game } from "./Game";
-import { Player } from "./Player";
 
 @WebSocketGateway({
   cors: {
@@ -30,7 +29,7 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
 
   @SubscribeMessage(MessageType.START_GAME)
   onStartGame(client: Socket, payload: any): void {
-    this.game = createGame(this.server, this.gameCreator, this.connectedPlayers);
+    this.game = Game.createGame(this.server, this.gameCreator, this.connectedPlayers);
     this.game.loop();
     let info = this.game.getPlayersInfo();
     this.server.emit(MessageType.GAME_STARTED, info);
@@ -123,14 +122,6 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
   handleConnection(client: Socket, ...args: any[]) {
     this.logger.log(`Client connected: ${client.id}`);
   }
-}
-
-export function createGame(io, gameCreator, connectedPlayers) {
-  let players = [];
-  connectedPlayers.map(player => {
-    players.push(new Player(player.socket, player.username));
-  });
-  return new Game(io, gameCreator, players);
 }
 
 interface ConnectedPlayer {

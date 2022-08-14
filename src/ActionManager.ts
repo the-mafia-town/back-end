@@ -33,7 +33,7 @@ export class ActionManager {
   isGodfatherDidAction(game: Game): Player {
     for (const actorUsername in this.actions) {
       let player = game.getPlayerFromUsername(actorUsername);
-      if (player.role == "Godfather")
+      if (player.role.name == "Godfather")
         return player;
     }
     return null;
@@ -42,7 +42,7 @@ export class ActionManager {
   isTargetProtected(targetPlayer: Player, game: Game): boolean {
     for (const actorUsername in this.actions) {
       let actorPlayer = game.getPlayerFromUsername(actorUsername);
-      if (actorPlayer.role  == "Doctor" && this.actions[actorUsername].targetPlayer.username == targetPlayer.username) {
+      if (actorPlayer.role.name  == "Doctor" && this.actions[actorUsername].targetPlayer.username == targetPlayer.username) {
         return true;
       }
     }

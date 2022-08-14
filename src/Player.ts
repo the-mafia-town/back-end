@@ -8,7 +8,7 @@ export class Player implements Action {
   private readonly _username: string;
   private _isAlive: boolean;
   private _isMafia: boolean;
-  private _role: string;
+  private _role: Role;
   private _remainingAbilityCounter = 3;
 
   constructor(socket, username) {
@@ -49,11 +49,11 @@ export class Player implements Action {
     this._isMafia = value;
   }
 
-  get role(): string {
+  get role(): Role {
     return this._role;
   }
 
-  set role(value: string) {
+  set role(value: Role) {
     this._role = value;
   }
 
@@ -72,4 +72,5 @@ export class Player implements Action {
   doAction(game: Game, targetPlayer: Player) {
 
   }
+
 }
